@@ -16,6 +16,8 @@ import {
   Visibility,
   VisibilityOff,
 } from "@mui/icons-material";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "./firebase/firebase";
 import loginIllustration from "./assets/login-illustration.svg";
 
 function App() {
@@ -24,36 +26,71 @@ function App() {
   const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const validateForm = () => {
+    let isValid = true;
 
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    let formIsValid = true;
 
-    if (!email) {
+    setEmailError("");
+    setPasswordError("");
+
+    if (!email.trim()) {
       setEmailError("Email is required");
-      formIsValid = false;
+      isValid = false;
     } else if (!emailPattern.test(email)) {
       setEmailError("Enter a valid email address");
-      formIsValid = false;
-    } else {
-      setEmailError("");
+      isValid = false;
     }
 
     if (!password) {
       setPasswordError("Password is required");
-      formIsValid = false;
+      isValid = false;
     } else if (password.length < 6) {
       setPasswordError("Password must contain at least 6 characters");
-      formIsValid = false;
-    } else {
-      setPasswordError("");
+      isValid = false;
     }
 
-    if (formIsValid) {
-      alert("Form validation successful");
+    return isValid;
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (validateForm()) {
+      alert("Form validation successful!");
     }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setGoogleLoading(true);
+
+      const result = await signInWithPopup(auth, googleProvider);
+      const accessToken = await result.user.getIdToken();
+
+      sessionStorage.setItem("accessToken", accessToken);
+
+      alert("Google login successful!");
+    } catch (error) {
+      console.error("Google login error:", error);
+      alert("Google login failed. Please try again.");
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const socialButtonStyle = {
+    width: 58,
+    height: 58,
+    backgroundColor: "#000000",
+    color: "#ffffff",
+    "&:hover": {
+      backgroundColor: "#333333",
+      transform: "translateY(-2px)",
+    },
+    transition: "all 0.2s ease",
   };
 
   return (
@@ -63,36 +100,39 @@ function App() {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+        padding: { xs: 2, sm: 4, md: 6 },
         backgroundColor: "#ffffff",
-        p: { xs: 2, md: 4 },
       }}
     >
       <Box
         sx={{
           width: "100%",
-          maxWidth: "1100px",
+          maxWidth: "1250px",
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1.15fr" },
-          minHeight: { md: "650px" },
+          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+          gap: { xs: 4, md: 8 },
+          alignItems: "stretch",
         }}
       >
-        {/* Left login section */}
+        {/* Login section */}
         <Box
           sx={{
+            width: "100%",
+            maxWidth: "500px",
+            margin: "0 auto",
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
-            px: { xs: 2, sm: 6, md: 7 },
-            py: { xs: 4, md: 6 },
+            padding: { xs: 1, sm: 3 },
           }}
         >
           <Typography
             component="h1"
             sx={{
-              fontSize: { xs: "2rem", md: "2.5rem" },
+              fontSize: { xs: "2.3rem", sm: "3rem" },
               fontWeight: 700,
               color: "#111111",
-              mb: 1.5,
+              marginBottom: 2,
             }}
           >
             Welcome back!
@@ -100,10 +140,10 @@ function App() {
 
           <Typography
             sx={{
-              color: "#777777",
-              fontSize: "0.9rem",
-              lineHeight: 1.6,
-              mb: 4,
+              color: "#707070",
+              fontSize: { xs: "0.95rem", sm: "1.05rem" },
+              lineHeight: 1.7,
+              marginBottom: 4,
             }}
           >
             Simplify your workflow and boost your productivity
@@ -111,10 +151,19 @@ function App() {
             with Tuga&apos;s App. Get started for free.
           </Typography>
 
-          <Box component="form" onSubmit={handleSubmit} noValidate>
+          <Box
+            component="form"
+            onSubmit={handleSubmit}
+            noValidate
+           
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2,
+            }}
+          >
             <TextField
               fullWidth
-              size="small"
               placeholder="Email"
               type="email"
               value={email}
@@ -122,19 +171,29 @@ function App() {
               helperText={emailError}
               onChange={(event) => {
                 setEmail(event.target.value);
-                setEmailError("");
+
+                if (emailError) {
+                  setEmailError("");
+                }
+              }}
+              slotProps={{
+                htmlInput: {
+                  "aria-label": "Email address",
+                },
               }}
               sx={{
-                mb: 2,
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: "24px",
+                  borderRadius: "30px",
+                  backgroundColor: "#ffffff",
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#6fa95d",
+                  },
                 },
               }}
             />
 
             <TextField
               fullWidth
-              size="small"
               placeholder="Password"
               type={showPassword ? "text" : "password"}
               value={password}
@@ -142,16 +201,25 @@ function App() {
               helperText={passwordError}
               onChange={(event) => {
                 setPassword(event.target.value);
-                setPasswordError("");
+
+                if (passwordError) {
+                  setPasswordError("");
+                }
               }}
               slotProps={{
+                htmlInput: {
+                  "aria-label": "Password",
+                },
                 input: {
                   endAdornment: (
                     <InputAdornment position="end">
                       <IconButton
+                        type="button"
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
+                        onClick={() => setShowPassword((previous) => !previous)}
                         edge="end"
-                        aria-label="Show or hide password"
-                        onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
@@ -160,37 +228,43 @@ function App() {
                 },
               }}
               sx={{
-                mb: 1,
                 "& .MuiOutlinedInput-root": {
-                  borderRadius: "24px",
+                  borderRadius: "30px",
+                  backgroundColor: "#ffffff",
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#6fa95d",
+                  },
                 },
               }}
             />
 
-            <Box sx={{ textAlign: "right", mb: 2.5 }}>
-              <Link
-                href="#"
-                underline="hover"
-                color="inherit"
-                sx={{ fontSize: "0.8rem" }}
-              >
-                Forgot Password?
-              </Link>
-            </Box>
+            <Link
+              href="#"
+              underline="hover"
+              sx={{
+                alignSelf: "flex-end",
+                color: "#111111",
+                fontSize: "0.9rem",
+              }}
+            >
+              Forgot Password?
+            </Link>
 
             <Button
-              fullWidth
               type="submit"
+              fullWidth
               variant="contained"
               sx={{
-                height: 46,
-                borderRadius: "24px",
+                marginTop: 1,
+                minHeight: "58px",
+                borderRadius: "30px",
                 backgroundColor: "#000000",
                 color: "#ffffff",
+                fontSize: "1rem",
                 textTransform: "none",
                 boxShadow: "none",
                 "&:hover": {
-                  backgroundColor: "#222222",
+                  backgroundColor: "#333333",
                   boxShadow: "none",
                 },
               }}
@@ -199,7 +273,15 @@ function App() {
             </Button>
           </Box>
 
-          <Divider sx={{ my: 3, color: "#777777", fontSize: "0.85rem" }}>
+          <Divider
+            sx={{
+              marginY: 4,
+              color: "#777777",
+              "&::before, &::after": {
+                borderColor: "#dddddd",
+              },
+            }}
+          >
             or continue with
           </Divider>
 
@@ -211,21 +293,23 @@ function App() {
             }}
           >
             <IconButton
-              aria-label="Continue with Google"
+              onClick={handleGoogleLogin}
+              disabled={googleLoading}
+              aria-label="Sign in with Google"
               sx={socialButtonStyle}
             >
               <Google />
             </IconButton>
 
             <IconButton
-              aria-label="Continue with Apple"
+              aria-label="Sign in with Apple"
               sx={socialButtonStyle}
             >
               <Apple />
             </IconButton>
 
             <IconButton
-              aria-label="Continue with Facebook"
+              aria-label="Sign in with Facebook"
               sx={socialButtonStyle}
             >
               <Facebook />
@@ -234,52 +318,66 @@ function App() {
 
           <Typography
             sx={{
+              marginTop: { xs: 5, md: 8 },
               textAlign: "center",
-              mt: 7,
-              color: "#555555",
-              fontSize: "0.85rem",
+              color: "#444444",
+              fontSize: "0.95rem",
             }}
           >
             Not a member?{" "}
-            <Link href="#" color="#6f9f67" underline="hover">
+            <Link
+              href="#"
+              underline="hover"
+              sx={{
+                color: "#6fa95d",
+                fontWeight: 500,
+              }}
+            >
               Register now
             </Link>
           </Typography>
         </Box>
 
-        {/* Right illustration section */}
+        {/* Illustration section */}
         <Box
           sx={{
             display: { xs: "none", md: "flex" },
-            m: 2,
-            borderRadius: "24px",
-            backgroundColor: "#f1f7ed",
-            justifyContent: "center",
-            alignItems: "center",
+            minHeight: "700px",
             flexDirection: "column",
-            p: 5,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 5,
+            borderRadius: "30px",
+            backgroundColor: "#f1f7ec",
             textAlign: "center",
           }}
         >
           <Box
             component="img"
             src={loginIllustration}
-            alt="Organizing work illustration"
+            alt="Person organizing work"
             sx={{
-              width: "85%",
-              maxWidth: "430px",
-              maxHeight: "400px",
-              mb: 4,
+              width: "100%",
+              maxWidth: "500px",
+              maxHeight: "470px",
+              objectFit: "contain",
             }}
           />
 
-          <Typography sx={{ fontSize: "1.4rem", color: "#222222" }}>
+          <Typography
+            sx={{
+              marginTop: 3,
+              fontSize: "1.7rem",
+              color: "#111111",
+            }}
+          >
             Make your work easier and organized
           </Typography>
 
           <Typography
             sx={{
-              fontSize: "1.4rem",
+              marginTop: 0.5,
+              fontSize: "1.7rem",
               fontWeight: 700,
               color: "#111111",
             }}
@@ -291,15 +389,5 @@ function App() {
     </Box>
   );
 }
-
-const socialButtonStyle = {
-  width: 48,
-  height: 48,
-  backgroundColor: "#000000",
-  color: "#ffffff",
-  "&:hover": {
-    backgroundColor: "#222222",
-  },
-};
 
 export default App;
