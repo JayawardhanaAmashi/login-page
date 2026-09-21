@@ -17,10 +17,13 @@ import {
   VisibilityOff,
 } from "@mui/icons-material";
 import { signInWithPopup } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 import { auth, googleProvider } from "./firebase/firebase";
 import loginIllustration from "./assets/login-illustration.svg";
 
 function App() {
+  const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +33,6 @@ function App() {
 
   const validateForm = () => {
     let isValid = true;
-
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     setEmailError("");
@@ -72,7 +74,7 @@ function App() {
 
       sessionStorage.setItem("accessToken", accessToken);
 
-      alert("Google login successful!");
+      navigate("/token");
     } catch (error) {
       console.error("Google login error:", error);
       alert("Google login failed. Please try again.");
@@ -86,11 +88,15 @@ function App() {
     height: 58,
     backgroundColor: "#000000",
     color: "#ffffff",
+    transition: "all 0.2s ease",
     "&:hover": {
       backgroundColor: "#333333",
       transform: "translateY(-2px)",
     },
-    transition: "all 0.2s ease",
+    "&.Mui-disabled": {
+      backgroundColor: "#dddddd",
+      color: "#999999",
+    },
   };
 
   return (
@@ -114,7 +120,7 @@ function App() {
           alignItems: "stretch",
         }}
       >
-        {/* Login section */}
+        {/* Login form section */}
         <Box
           sx={{
             width: "100%",
@@ -155,7 +161,6 @@ function App() {
             component="form"
             onSubmit={handleSubmit}
             noValidate
-           
             sx={{
               display: "flex",
               flexDirection: "column",
@@ -218,7 +223,9 @@ function App() {
                         aria-label={
                           showPassword ? "Hide password" : "Show password"
                         }
-                        onClick={() => setShowPassword((previous) => !previous)}
+                        onClick={() => {
+                          setShowPassword((previousValue) => !previousValue);
+                        }}
                         edge="end"
                       >
                         {showPassword ? <VisibilityOff /> : <Visibility />}
